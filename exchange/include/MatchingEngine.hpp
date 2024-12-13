@@ -1,30 +1,29 @@
 #pragma once
 #include "ExchangeConfig.hpp"
 #include <asio.hpp>
-#include <MRMWChannel.hpp>
-#include <SRSWChannel.hpp>
+#include <Channel.hpp>
 #include <OrderTypes.hpp>
+#include <EnginePort.hpp>
+#include <OrderBook.hpp>
+#include <asio/experimental/coro.hpp>
 
 namespace exch {
 
 class MatchingEngine
 {
 public:
-    MatchingEngine(ExchangeConfig cfg);
-    asio::awaitable<void> run();
+    explicit MatchingEngine(ExchangeConfig cfg);
+    [[nodiscard]] asio::awaitable<void> run();
 public:
-    /*
-        Public interface with the Matching Engine 
-    */
-    struct ConnectPort
-    {
-        lib::MRMWChannel<order::ClientOutboundMessages> *clientSendChannel;
-        lib::SRSWChannel<order::ServerOutboundMessages> *serverSendChannel;
-    };
-
-    asio::awaitable<ConnectPort> openPort();
+    [[nodiscard]] asio::experimental::generator<EnginePort> connect();
+public:
+    MatchingEngine(MatchingEngine &&) = default;
+    MatchingEngine(const MatchingEngine &) = delete;
+    MatchingEngine &operator=(MatchingEngine &&) = default;
+    MatchingEngine &operator=(const MatchingEngine &) = delete;
 private:
-    asio::awaitable<void> handleClientMessage();
+    OrderBook book;
+    asio::awaitable<void> handleClientMessages();
 };
 
 }

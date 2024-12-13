@@ -1,9 +1,8 @@
 #include <asio.hpp>
-// #include <Acceptor.hpp>
-// #include <ExchangeConfig.hpp>
-// #include <ClientConnection.hpp>
-// #include <MatchingEngine.hpp>
-#include <TestAsyncApplication.hpp>
+#include <Acceptor.hpp>
+#include <ExchangeConfig.hpp>
+#include <ClientConnection.hpp>
+#include <MatchingEngine.hpp>
 
 #include <iostream>
 #include <thread>
@@ -11,35 +10,42 @@
 
 int main()
 {
-    // asio::io_context matchingEngineExecutor;
-    // asio::io_context clientExecutor;
+    asio::io_context engineExecutor;
+    asio::io_context clientExecutor;
 
-    // std::jthread matchingEngineThread{[&](std::stop_token tok){
-    //     matchingEngineExecutor.run();
-    // }};
-    // std::jthread clientThread{[&](std::stop_token tok){
-    //     // while(!tok.stop_requested())
-    //     // {
-    //     //     clientExecutor.run_one();
-    //     // }
-    //     clientExecutor.run();
-    // }};
-
-    // std::vector<exch::ClientConnection> activeConnections;
-    // exch::ExchangeConfig cfg{};
-    // exch::MatchingEngine me{cfg};
-
-    asio::io_context context;
-    AsyncApplication app;
-    asio::co_spawn(context, app.run(), asio::detached);
-
-    std::thread jt{[&](){
-        context.run();
+    std::thread engineWorker{[&](std::stop_token tok){
+        engineExecutor.run();
+    }};
+    std::thread clientWorker{[&](std::stop_token tok){
+        clientExecutor.run();
     }};
 
-    std::this_thread::sleep_for(std::chrono::seconds(20));
+    exch::ExchangeConfig cfg{
+        .listenPort = 1010
+    };
+    
+    /*
+        Core of the exchange 
+    */
+    exch::MatchingEngine matchingEngine{cfg};
+    
+    /*
+        Co-routine that spends its life accepting clients and transferring them
+        to the clientExecutor for work 
+    */
+    auto clientAcceptor = [&]() -> asio::awaitable<void> {
+        exch::Acceptor acceptor{cfg, matchingEngine.connect()};
+        std::vector<exch::ClientConnection> activeClients;
 
-    app.stop();
-    context.stop();
-    jt.join();
+        while(true)
+        {
+            activeClients.emplace_back(co_await acceptor.accept());
+            asio::co_spawn(clientExecutor, activeClients.back().run(), asio::detached);
+        }
+    };
+
+    asio::co_spawn(engineExecutor, matchingEngine.run(), asio::detached);
+    asio::co_spawn(engineExecutor, clientAcceptor(), asio::detached);
+
+    while(1);
 }

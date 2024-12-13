@@ -1,7 +1,7 @@
-#include "asio/io_context.hpp"
+#pragma once
+#include "EnginePort.hpp"
 #include <asio.hpp>
-#include <MRMWChannel.hpp>
-#include <SRSWChannel.hpp>
+#include <Channel.hpp>
 #include <OrderTypes.hpp>
 
 namespace exch {
@@ -9,18 +9,22 @@ namespace exch {
 class ClientConnection
 {
 public:
-    ClientConnection(
-        MRMWChannel<order::ClientOutboundMessages> *clientSendChannel,
-        SRSWChannel<order::ServerOutboundMessages> *serverSendChannel,
-        asio::ip::tcp::socket conn,
-        std::shared_ptr<asio::io_context> ctx
-    );
-    ~ClientConnection();
-    void run();
-    void stop();
+    explicit ClientConnection(
+        EnginePort enginePort,
+        asio::ip::tcp::socket sock);
+
+    [[nodiscard]] asio::awaitable<void> run();
 private:
+    EnginePort enginePort;
+    asio::ip::tcp::socket sock;
+
     asio::awaitable<void> handleServerMsg();
     asio::awaitable<void> handleClientMsg();
+public:
+    ClientConnection(ClientConnection &&) = default;
+    ClientConnection &operator=(ClientConnection &&) = default;
+    ClientConnection(const ClientConnection &) = delete;
+    ClientConnection &operator=(const ClientConnection &) = delete;
 };
 
 }

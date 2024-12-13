@@ -20,7 +20,7 @@ public:
     }
 private:
     bool running = true;
-    asio::awaitable<int> everyOneSecond() {
+    asio::awaitable<void> everyOneSecond() {
         auto executor = co_await asio::this_coro::executor;
 
         asio::steady_timer timer{executor};
@@ -31,9 +31,8 @@ private:
             co_await timer.async_wait(asio::use_awaitable);
             fmt::println("1 second");
         }
-        co_return 0;
     }
-    asio::awaitable<int> everyTwoSeconds() {
+    asio::awaitable<void> everyTwoSeconds() {
         auto executor = co_await asio::this_coro::executor;
 
         asio::steady_timer timer{executor};
@@ -44,6 +43,5 @@ private:
             co_await timer.async_wait(asio::use_awaitable);
             fmt::println("2 seconds");
         }
-        co_return 0;
     }
 };

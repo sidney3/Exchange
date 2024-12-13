@@ -6,6 +6,7 @@ add_executable(exchangeTests
 )
 
 target_link_libraries(exchangeTests
+    exchange
     nlohmann_json::nlohmann_json
     GTest::gtest_main
     GTest::gmock_main)
