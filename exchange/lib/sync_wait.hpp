@@ -1,19 +1,18 @@
 #pragma once
 #include <asio.hpp>
+#include <optional>
 
 namespace exch::lib {
 
-/*
-    Synchronously wait for the result of an AWAITABLE computation
-*/
-template<typename AWAITABLE>
-typename AWAITABLE::value_type sync_wait(AWAITABLE &&awaitable) {
+template<typename AWAITABLE, typename ReturnT = typename AWAITABLE::value_type>
+std::optional<ReturnT> sync_wait(AWAITABLE &&awaitable)
+{
     asio::io_context tempContext;
 
-    asio::co_spawn(tempContext, std::forward<AWAITABLE>(awaitable), [&]() {
+    std::thread th{[&](){
+        tempContext.run();
+    }};
 
-    });
+    return asio::co_spawn(tempContext, std::forward<AWAITABLE>(awaitable), asio::use_future);
 }
-
-
-}
+} // namespace exch::lib

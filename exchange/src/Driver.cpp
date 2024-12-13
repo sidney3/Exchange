@@ -34,7 +34,7 @@ int main()
         to the clientExecutor for work 
     */
     auto clientAcceptor = [&]() -> asio::awaitable<void> {
-        exch::Acceptor acceptor{cfg, matchingEngine.connect()};
+        exch::Acceptor acceptor{cfg, [&]() {return matchingEngine.connect();}};
         std::vector<exch::ClientConnection> activeClients;
 
         while(true)

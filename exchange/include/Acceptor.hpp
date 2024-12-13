@@ -12,8 +12,7 @@ namespace exch {
 class Acceptor
 {
 public:
-    Acceptor(ExchangeConfig cfg, 
-        asio::experimental::generator<EnginePort> nextPort
+    Acceptor(ExchangeConfig cfg, std::function<EnginePort(void)> nextPort
     );
     asio::awaitable<ClientConnection> accept();
 private:

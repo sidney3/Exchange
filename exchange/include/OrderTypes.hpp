@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <variant>
 #include <array>
+#include <Types.hpp>
 
 namespace exch::order {
 
@@ -24,11 +25,11 @@ using BBGTicker = std::array<char, 4>;
 using Qty = std::size_t;
 using Id = std::size_t;
 
-enum class OrderType
+enum class Type
 {
     Limit
 };
-enum class OrderSide
+enum class Side
 {
     Buy, Sell
 };
@@ -37,29 +38,47 @@ enum class OrderSide
 struct Order
 {
     Price price;
-    OrderType type;
-    OrderSide side;
+    Qty qty;
+    order::Type type = order::Type::Limit;
+    order::Side side;
     BBGTicker symbol;
-
+    Timepoint sendTime;
     // this ID only gets used to identify the order to
     // the client. Upon receiving an order, we generate our own ID for
     // it and just use that!
-    Id clientId;
+    order::Id clientsOrderId;
+    
+    // ID of the sending client
+    ClientId clientId;
 };
 
 struct Ack
 {
-    Id clientId;
-    Id vendorId;
+    order::Id clientId;
+    order::Id vendorId;
 };
 struct Fill
 {
-    Id id;
+    order::Id id;
     Price fillPrice;
     //@note: partial fills are allowed
     Qty fillQty;
 };
 
+/*
+    An internal type (not sent back to a client)
+*/
+struct Execution
+{
+    order::Id sellId;
+    Order sellOrder;
+
+    order::Id buyId;
+    Order buyOrder;
+
+    order::Qty execQty;
+    order::Price execPrice;
+};
 
 // Messages the client can send to us
 using ClientOutboundMessages = std::variant<

@@ -5,9 +5,9 @@
 #include <fmt/format.h>
 
 /*
-    An example coroutine based class to show our desired flow
+    An example coroutine based class to show our desired flow (how we might compose multiple coroutines into one)
     
-    (this gets run in exchange/src/TestDriver)
+    This gets executed in src/TestDriver.cpp
 */
 class AsyncApplication
 {
