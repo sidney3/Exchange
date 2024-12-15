@@ -23,6 +23,11 @@ target_include_directories(exchange PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 
 target_link_libraries(exchange PUBLIC 
+    # Sick Google data structures
+    absl::base          
+    absl::strings       
+    absl::flat_hash_map  
+    absl::inlined_vector
     quickfix
     exchangeLib
     asio 

@@ -11,14 +11,25 @@ An example of this style of module, and an example driver for it, is given in `e
 
 ## Objectives
 
+1. Try out building an asyncronous system. I felt I wrote a very inefficient thread based TCP system that spent a lot of its time spinning, and I wanted to try out building a system around coroutines
+2. Make something performant (or at least investigate performance). I put special emphasis on making something that was sufficiently modular to write benchmarks for it. We spend most of the report discussing our timing related findings.
+
 ## Non-Objectives
 
 As we are more interested in exploring building something efficient, we eschew:
 
 1. Cancels
-2. Handling
+2. Network card performance. At a high level, we can the flow of data in our program is as follows:
 
-## Writeup
+Incoming Data (over the wire) in the FIX format  --->
+
+`ClientConnection.hpp` (translated into our internal order structs)  --->
+
+`MatchingEngine.hpp` (feeds the orders into a single threaded `OrderBook.hpp`)
+
+There is a lot of depth to the first step (how do we do our encodings / decodings in a performant way), but I wasn't able to find the time to focus on this link of the graph. So we spend most of our time thinking about the link between the client connection and the matching engine. The `exchange/lib/Fix.hpp` are the main areas where I would have liked to put more time into thinking about performance, but this is a challenge for another day.
+
+## Performance Writeup
 
 As mentioned above, one of the big goals of this project was to both build a functional product, but then benchmark it and improve accordingly. We discuss our benchmarking methods and some of our surprising findings.
 
@@ -42,7 +53,7 @@ This can be seen in `exchange/benchmark/MatchingEngineBenchmark.cpp`. Each clien
 
 In our benchmarks, we also allow "self-trades" (trading with yourself). This is configurable (see `OrderBook.hpp`), and in a real exchange environment would be disabled, but this led to an unecessary performance hit for situations where we had very few threads trading.
 
-### How many threads to use
+### How many threads to use?
 
 Because our architecture gets represented by a series of `asio::awaitable<void>` tasks, we can easily vary the amount of work that we would like to distribute across our system. We explore three different strategies:
 
@@ -76,3 +87,64 @@ We also note that the above does not include the third work source of accepting 
 ### Concurrent vs Single Threaded Channel
 
 So we choose to use a single threaded system. How much extra performance do we get from the multithreaded vs single threaded channel implementations provided by asio?
+
+```
+-------------------------------------------------------------------------------------
+Benchmark Of Single Threaded Channel                Time             CPU   Iterations
+-------------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/5/1/1000     94089550 ns        25028 ns          100 Num clients: 5, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/25/1/1000   450907438 ns       248491 ns           10 Num clients: 25, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/250/1/1000 4717823168 ns      3196460 ns            1 Num clients: 250, Num worker threads: 1, Trades Per Client: 1000
+
+--------------------------------------------------------------------------------------
+Benchmark Of Multithreaded Channel                   Time             CPU   Iterations
+--------------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/5/1/1000     102084023 ns        29470 ns          100 Num clients: 5, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/25/1/1000    458553909 ns       249258 ns           10 Num clients: 25, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/250/1/1000  4625691211 ns      3100376 ns            1 Num clients: 250, Num worker threads: 1, Trades Per Client: 1000
+```
+
+We will happily take a 5% performance gain (and a more modest ~1% gain in the 25 client case). As we only get 1 sample with the 250 client case I do not consider this statistically significant
+
+### CoAwait the executions?
+
+We do not want to send the client an `Ack` for an order after we send them a `Fill` for that order, and so our engine is forced to `co_await` it's `Ack` to the client (i.e. it can't dry fire it). But can we get any performance gains from dry-firing our `Executions`? Note that we do this in an environment with exactly 1 client, else we can get some deadlocks (not due to an error in the matching engine, but due to the somewhat naive way in which we do our benchmarks). 
+
+```
+-----------------------------------------------------------------------------------
+Benchmark Of Dry Firing Executions                Time             CPU   Iterations
+-----------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/1/1/1000  102749174 ns         8577 ns          100 Num clients: 1, Num worker threads: 1, Trades Per Client: 1000
+-----------------------------------------------------------------------------------
+Benchmark Of Awaiting Client Executions          Time             CPU   Iterations
+-----------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/1/1/1000  102958890 ns         9564 ns          100 Num clients: 1, Num worker threads: 1, Trades Per Client: 1000
+```
+
+And interestingly, we find very little performance gain from dry-firing our executions. I was very surprised by this, and it speaks to the efficiency of `asio`'s async runtime.
+
+### Use better data structures
+
+Not a very surprising part of our benchmarks, but we evaluate the performance advantages that we gain from switching to `StackVector` (vector that starts out stack allocated past a threshold) and `FlatMap` (open addressed hash map) in place of `std::vector` and `std::unordered_map`. We use the sick (abseil)[https://abseil.io/] library 
+
+```
+------------------------------------------------------------------------------------
+Initial Benchmark                                          Time             CPU   Iterations
+------------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/5/1/1000    95265023 ns        30415 ns          100 Num clients: 5, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/25/1/1000  453356829 ns       237687 ns           10 Num clients: 25, Num worker threads: 1, Trades Per Client: 1000
+------------------------------------------------------------------------------------
+Linear Probing Hashmap Benchmark                                          Time             CPU   Iterations
+------------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/5/1/1000    95019727 ns        27491 ns          100 Num clients: 5, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/25/1/1000  471808450 ns       254275 ns           10 Num clients: 25, Num worker threads: 1, Trades Per Client: 1000
+
+------------------------------------------------------------------------------------
+Linear Probing + Stack Vector Time             CPU   Iterations
+------------------------------------------------------------------------------------
+BM_MatchingEngineSendSomeTrades/5/1/1000    96821576 ns        27863 ns          100 Num clients: 5, Num worker threads: 1, Trades Per Client: 1000
+BM_MatchingEngineSendSomeTrades/25/1/1000  467132430 ns       247230 ns           10 Num clients: 25, Num worker threads: 1, Trades Per Client: 1000
+
+```
+
+Most surprising in the above is how little benefit we get from the use of stack vectors (note that our `OrderBook` returns one of these for every execution). I would imagine that not allocating would give us a lot of performance, but surprisingly it did not, so we remain with `std::vector`.

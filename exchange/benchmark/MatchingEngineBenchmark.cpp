@@ -103,16 +103,18 @@ static void BM_MatchingEngineSendSomeTrades(benchmark::State &state) {
 
 BENCHMARK(BM_MatchingEngineSendSomeTrades)
     /******************
-    Thread count tests 
+    Thread count tests. Commented out as we only use 1 thread in main system
     *******************/
     ->Args({5, 1, 1000})
-    ->Args({5, 2, 1000})
-    ->Args({5, 6, 1000})
+    // ->Args({5, 2, 1000})
+    // ->Args({5, 6, 1000})
     ->Args({25, 1, 1000})
-    ->Args({25, 2, 1000})
-    ->Args({25, std::min(100U, std::thread::hardware_concurrency()), 1000})
-    ->Args({250, 1, 1000})
-    ->Args({250, 2, 1000})
-    ->Args({250, std::min(1000U, std::thread::hardware_concurrency()), 1000});
+    // ->Args({25, 2, 1000})
+    // ->Args({25, std::min(100U, std::thread::hardware_concurrency()), 1000})
+    // ->Args({250, 1, 1000})
+    // ->Args({250, 2, 1000})
+    // ->Args({250, std::min(1000U, std::thread::hardware_concurrency()), 1000});
+
+    ;
 
 BENCHMARK_MAIN();

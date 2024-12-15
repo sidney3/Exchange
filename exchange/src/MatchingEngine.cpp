@@ -2,6 +2,7 @@
 #include "EnginePort.hpp"
 #include "OrderTypes.hpp"
 #include <fmt/format.h>
+#include "compilerUtils.hpp"
 
 #include <cassert>
 

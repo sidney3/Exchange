@@ -27,9 +27,15 @@ FetchContent_Declare(
 FetchContent_Declare(
   google_benchmark
   GIT_REPOSITORY https://github.com/google/benchmark.git
-  GIT_TAG v1.8.3  # Use the latest stable release or specify your desired version
+  GIT_TAG v1.8.3  
+)
+FetchContent_Declare(
+  abseil
+  GIT_REPOSITORY https://github.com/abseil/abseil-cpp.git
+  GIT_TAG 20230125.3  
 )
 
+FetchContent_MakeAvailable(abseil)
 FetchContent_MakeAvailable(googletest)
 FetchContent_MakeAvailable(asio)
 FetchContent_MakeAvailable(nlohmann_json)
