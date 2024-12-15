@@ -18,8 +18,7 @@ using Price = double;
 /*
     Bloomberg encoding of the ticker e.x. AAPL
 
-    In practice this is NOT only 4 bytes
-    but for our purposes we assume that it is 
+    NOT very efficient to represent this as a string, but we do it anyways
 */
 using BBGTicker = std::string;
 

@@ -3,6 +3,7 @@ enable_testing()
 
 add_executable(exchangeTests
     MatchingEngineTest.cpp
+    OrderBookTest.cpp
 )
 
 target_link_libraries(exchangeTests

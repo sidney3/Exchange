@@ -41,7 +41,7 @@ protected:
     ExchangeConfig testConfig{};
     MatchingEngine matchingEngine{testConfig, context};
 
-    template<typename AWAITABLE, typename ReturnT = typename AWAITABLE::value_type>
+    template<typename AWAITABLE, typename ReturnT = typename std::decay_t<AWAITABLE>::value_type>
     ReturnT sync_wait(AWAITABLE &&awaitable, std::chrono::steady_clock::duration waitTime = 50ms)
     {
         std::future<ReturnT> fut = asio::co_spawn(context, std::forward<AWAITABLE>(awaitable), asio::use_future);
