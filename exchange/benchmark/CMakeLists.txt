@@ -4,6 +4,7 @@ set(SOURCES
 
 add_executable(ExchangeBenchmark ${SOURCES})
 target_link_libraries(ExchangeBenchmark
+    fmt
     exchange
     benchmark::benchmark
     pthread

@@ -25,7 +25,6 @@ protected:
     }
     ~MatchingEngineTest()
     {
-        workGuard.reset();
         context.stop();
     }
 

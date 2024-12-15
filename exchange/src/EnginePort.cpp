@@ -1,4 +1,5 @@
 #include "EnginePort.hpp"
+#include <fmt/format.h>
 
 namespace exch {
 

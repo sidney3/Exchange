@@ -9,7 +9,7 @@ namespace exch {
 
 MatchingEngine::MatchingEngine(ExchangeConfig cfg, asio::io_context &ctx)
     : cfg{cfg}
-    , incomingChannel{std::make_shared<client_send_channel_t>(ctx)}
+    , incomingChannel{std::make_shared<client_send_channel_t>(ctx, 4096)}
 {}
 
 asio::awaitable<void> MatchingEngine::run() {
@@ -19,7 +19,7 @@ asio::awaitable<void> MatchingEngine::run() {
 asio::awaitable<EnginePort> MatchingEngine::connect(asio::io_context &ctx) {
     ClientId id = nextClientId++;
 
-    clientChannels.insert({id,std::make_shared<server_send_channel_t>(ctx)});
+    clientChannels.insert({id,std::make_shared<server_send_channel_t>(ctx, 8)});
 
     assert(nextClientId == clientChannels.size() && "client Id should be a map into clientChannels");
 
@@ -47,27 +47,28 @@ asio::awaitable<void> MatchingEngine::handleClientMessages() {
             for(auto &&exec : executions)
             {
                 assert(exec.side1.side != exec.side2.side && "trades should be on opposite sides");
-                auto notifySell = [&]() -> asio::awaitable<void> {
+                auto notifySell = [&]() {
                     assert(clientChannels.contains(exec.side1.clientId) && "client id not found");
-                    co_await clientChannels.at(exec.side1.clientId)->async_send(asio::error_code{}, order::Fill{
+                    clientChannels.at(exec.side1.clientId)->async_send(asio::error_code{}, order::Fill{
                         exec.side1.exchangeId,
                         exec.execPrice,
                         exec.execQty
-                    }, asio::use_awaitable);
+                    }, asio::detached);
                 };
-                auto notifyBuy = [&]() -> asio::awaitable<void> {
+                auto notifyBuy = [&]() {
                     assert(clientChannels.contains(exec.side2.clientId) && "client id not found");
-                    co_await clientChannels.at(exec.side2.clientId)->async_send(asio::error_code{}, order::Fill{
+                    clientChannels.at(exec.side2.clientId)->async_send(asio::error_code{}, order::Fill{
                         exec.side2.exchangeId,
                         exec.execPrice,
                         exec.execQty
-                    }, asio::use_awaitable);
+                    }, asio::detached);
                 };
 
                 // @todo: fire these at the same time!
                 // one client shouldn't here about the trade before another
-                co_await notifySell();
-                co_await notifyBuy();
+
+                notifySell();
+                notifyBuy();
             }
         };
 
