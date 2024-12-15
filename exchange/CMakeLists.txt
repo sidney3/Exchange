@@ -1,8 +1,10 @@
 cmake_minimum_required(VERSION 3.22.1)
 
-add_library(exchangeLib INTERFACE)
-target_include_directories(exchangeLib INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-target_link_libraries(exchangeLib INTERFACE 
+add_library(exchangeLib 
+    lib/Fix.cpp
+)
+target_include_directories(exchangeLib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/lib)
+target_link_libraries(exchangeLib PRIVATE
     asio 
 )
 

@@ -20,5 +20,12 @@ using FlatMap = std::unordered_map<K,V>;
 template<typename T>
 using channel = asio::experimental::concurrent_channel<void(asio::error_code, T)>;
 
+template<typename ... Ts>
+struct Overloaded : Ts...
+{
+    using Ts::operator()...;
+};
+template<typename ... Ts>
+Overloaded(Ts...) -> Overloaded<Ts...>;
 
 }

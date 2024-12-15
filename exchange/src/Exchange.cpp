@@ -6,7 +6,7 @@ namespace exch {
 
 Exchange::Exchange(ExchangeConfig cfg, std::shared_ptr<asio::io_context> context)
     : matchingEngine{std::make_shared<MatchingEngine>(cfg, *context)}
-    , acceptor{std::make_shared<Acceptor>(cfg, [me = this->matchingEngine](asio::io_context &ctx) {
+    , acceptor{std::make_shared<Acceptor>(cfg, *context, [me = this->matchingEngine](asio::io_context &ctx) {
         return me->connect(ctx);
     })}
     , clients{}

@@ -17,6 +17,7 @@ public:
 private:
     EnginePort enginePort;
     asio::ip::tcp::socket sock;
+    std::vector<char> sendBuffer;
 
     asio::awaitable<void> handleServerMsg();
     asio::awaitable<void> handleClientMsg();

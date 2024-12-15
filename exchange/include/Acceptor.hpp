@@ -13,10 +13,11 @@ namespace exch {
 class Acceptor
 {
 public:
-    Acceptor(ExchangeConfig cfg, std::function<asio::awaitable<EnginePort>(asio::io_context&)> nextPort);
+    Acceptor(ExchangeConfig cfg, asio::io_context &context, std::function<asio::awaitable<EnginePort>(asio::io_context&)> nextPort);
     asio::awaitable<ClientConnection> accept(asio::io_context &);
 private:
     std::function<asio::awaitable<EnginePort>(asio::io_context&)> nextPort;
+    asio::ip::tcp::acceptor acceptor;
     ExchangeConfig cfg;
 };
 
