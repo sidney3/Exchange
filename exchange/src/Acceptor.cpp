@@ -25,6 +25,10 @@ asio::awaitable<ClientConnection> Acceptor::accept(asio::io_context &context) {
         asio::ip::tcp::socket socket = co_await acceptor.async_accept(asio::use_awaitable);
         std::optional<FIX::Message> maybeLogon = co_await FIX::readLogon(socket);
 
+        //@note in a real exchange we might do some sort of logon validation
+        // and note the client config. We don't do that here as our implementaiton
+        // isn't really about that
+
         if(maybeLogon.has_value())
         {
             co_return ClientConnection{

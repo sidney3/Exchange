@@ -12,6 +12,7 @@ An example of this style of module, and an example driver for it, is given in `e
 ## Objectives
 
 1. Try out building an asyncronous system. I felt I wrote a very inefficient thread based TCP system that spent a lot of its time spinning, and I wanted to try out building a system around coroutines
+
 2. Make something performant (or at least investigate performance). I put special emphasis on making something that was sufficiently modular to write benchmarks for it. We spend most of the report discussing our timing related findings.
 
 ## Non-Objectives
@@ -26,6 +27,8 @@ Incoming Data (over the wire) in the FIX format  --->
 `ClientConnection.hpp` (translated into our internal order structs)  --->
 
 `MatchingEngine.hpp` (feeds the orders into a single threaded `OrderBook.hpp`)
+
+We propose implementations for that first link, but don't test these thoroughly and instead focus our testing + benchmarking time on the communication between `ClientConnection` and `MatchingEngine`.
 
 There is a lot of depth to the first step (how do we do our encodings / decodings in a performant way), but I wasn't able to find the time to focus on this link of the graph. So we spend most of our time thinking about the link between the client connection and the matching engine. The `exchange/lib/Fix.hpp` are the main areas where I would have liked to put more time into thinking about performance, but this is a challenge for another day.
 
