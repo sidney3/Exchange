@@ -3,6 +3,7 @@
 #include <variant>
 #include <array>
 #include <Types.hpp>
+#include <string>
 
 namespace exch::order {
 
@@ -20,7 +21,7 @@ using Price = double;
     In practice this is NOT only 4 bytes
     but for our purposes we assume that it is 
 */
-using BBGTicker = std::array<char, 4>;
+using BBGTicker = std::string;
 
 using Qty = std::size_t;
 using Id = std::size_t;
@@ -43,13 +44,18 @@ struct Order
     order::Side side;
     BBGTicker symbol;
     Timepoint sendTime;
+
     // this ID only gets used to identify the order to
     // the client. Upon receiving an order, we generate our own ID for
     // it and just use that!
-    order::Id clientsOrderId;
-    
-    // ID of the sending client
+    order::Id foreignOrderId;
+
     ClientId clientId;
+};
+
+/* Lambrusco */
+struct AckedOrder : Order {
+    order::Id exchangeId;
 };
 
 struct Ack
@@ -70,11 +76,8 @@ struct Fill
 */
 struct Execution
 {
-    order::Id sellId;
-    Order sellOrder;
-
-    order::Id buyId;
-    Order buyOrder;
+    AckedOrder side1;
+    AckedOrder side2;
 
     order::Qty execQty;
     order::Price execPrice;

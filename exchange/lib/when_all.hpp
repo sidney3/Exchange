@@ -8,9 +8,8 @@ template<typename ... AWAITABLE>
 asio::awaitable<void> when_all(AWAITABLE &&... awaitables)
 {
     auto executor = co_await asio::this_coro::executor;
-
     std::atomic<size_t> tasksRemaining{sizeof...(AWAITABLE)};
-    Signal sig{executor};
+    Signal sig{};
 
     auto task = [&](auto &&awaitable) -> asio::awaitable<void> {
         co_await std::forward<decltype(awaitable)>(awaitable);

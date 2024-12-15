@@ -22,7 +22,7 @@ asio::awaitable<void> ClientConnection::handleServerMsg()
 {
     while(true)
     {
-        order::ServerOutboundMessages msg = co_await enginePort.serverSendChannel->receive();
+        order::ServerOutboundMessages msg = co_await enginePort.receive();
     }
 }
 

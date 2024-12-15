@@ -1,7 +1,6 @@
 #pragma once
 #include "EnginePort.hpp"
 #include <asio.hpp>
-#include <Channel.hpp>
 #include <OrderTypes.hpp>
 
 namespace exch {
@@ -11,7 +10,8 @@ class ClientConnection
 public:
     explicit ClientConnection(
         EnginePort enginePort,
-        asio::ip::tcp::socket sock);
+        asio::ip::tcp::socket sock
+        );
 
     [[nodiscard]] asio::awaitable<void> run();
 private:

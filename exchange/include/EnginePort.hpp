@@ -1,6 +1,5 @@
 #pragma once
 #include <asio.hpp>
-#include <Channel.hpp>
 #include <OrderTypes.hpp>
 #include <Types.hpp>
 
@@ -12,19 +11,27 @@ namespace exch {
 */
 class EnginePort 
 {
+private:
+    ClientId clientId;
+    using client_send_channel_t = concurrent_channel<void(asio::error_code, std::pair<ClientId, order::ClientOutboundMessages>)>;
+    using server_send_channel_t = concurrent_channel<void(asio::error_code, order::ServerOutboundMessages)>;
+
+    std::shared_ptr<client_send_channel_t> clientSendChannel;
+    std::shared_ptr<server_send_channel_t> serverSendChannel;
 public:
     explicit EnginePort(
         ClientId id
-        , std::shared_ptr<lib::Channel<std::pair<ClientId, order::ClientOutboundMessages>>> toServerChan
-        , std::shared_ptr<lib::Channel<order::ServerOutboundMessages>> fromServerChan
-    );
+        , std::shared_ptr<client_send_channel_t> toServerChan
+        , std::shared_ptr<server_send_channel_t> fromServerChan
+    ) : clientId{id}
+    , clientSendChannel{std::move(toServerChan)}
+    , serverSendChannel{std::move(fromServerChan)}
+    {}
+    explicit EnginePort() = default;
 
     asio::awaitable<order::ServerOutboundMessages> receive();
-    void send(order::ClientOutboundMessages);
-private:
-    ClientId clientId;
-    std::reference_wrapper<lib::Channel<std::pair<ClientId, order::ClientOutboundMessages>>> clientSendChannel;
-    std::reference_wrapper<lib::Channel<order::ServerOutboundMessages>> serverSendChannel;
+    asio::awaitable<void> send(order::ClientOutboundMessages);
+    ClientId myId() const;
 };
 
 } // namespace exch

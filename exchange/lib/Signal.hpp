@@ -1,24 +1,33 @@
 #pragma once
 #include <asio.hpp>
 #include <chrono>
+#include <mutex>
+#include <optional>
 
 namespace exch::lib {
 
 class Signal
 {
 private:
-    asio::steady_timer timer;
+    std::mutex m;
+    std::optional<asio::steady_timer> timer;
 public:
-    explicit Signal(asio::any_io_executor exec)
-        : timer{exec}
+    explicit Signal(): timer{}
     {}
 
     asio::awaitable<void> wait() {
-        timer.expires_at(std::chrono::steady_clock::time_point::max());
-        co_await timer.async_wait(asio::use_awaitable);
+        auto executor = co_await asio::this_coro::executor;
+        {
+            std::lock_guard lk(m);
+            timer = asio::steady_timer{executor};
+            timer->expires_at(std::chrono::steady_clock::time_point::max());
+        }
+        co_await timer->async_wait(asio::use_awaitable);
     }
     void set() {
-        timer.cancel();
+        std::lock_guard lk{m};
+        if(timer.has_value())
+            timer->cancel();
     }
 };
 }

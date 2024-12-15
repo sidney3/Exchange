@@ -12,6 +12,7 @@ add_library(exchange
     src/MatchingEngine.cpp
     src/Order.cpp
     src/OrderBook.cpp
+    src/EnginePort.cpp
 )
 
 target_include_directories(exchange PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
