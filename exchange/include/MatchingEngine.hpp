@@ -23,8 +23,8 @@ private:
     /*
         Communication with clients 
     */
-    using client_send_channel_t = concurrent_channel<void(asio::error_code, std::pair<ClientId, order::ClientOutboundMessages>)>;
-    using server_send_channel_t = concurrent_channel<void(asio::error_code, order::ServerOutboundMessages)>;
+    using client_send_channel_t = channel<std::pair<ClientId, order::ClientOutboundMessages>>;
+    using server_send_channel_t = channel<order::ServerOutboundMessages>;
 
     //@note: we use shared_ptr so we can hand these out to clients and not worry about
     // pointer invalidation

@@ -13,8 +13,8 @@ class EnginePort
 {
 private:
     ClientId clientId;
-    using client_send_channel_t = concurrent_channel<void(asio::error_code, std::pair<ClientId, order::ClientOutboundMessages>)>;
-    using server_send_channel_t = concurrent_channel<void(asio::error_code, order::ServerOutboundMessages)>;
+    using client_send_channel_t = channel<std::pair<ClientId, order::ClientOutboundMessages>>;
+    using server_send_channel_t = channel<order::ServerOutboundMessages>;
 
     std::shared_ptr<client_send_channel_t> clientSendChannel;
     std::shared_ptr<server_send_channel_t> serverSendChannel;

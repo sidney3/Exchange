@@ -100,7 +100,7 @@ static void BM_MatchingEngineSendSomeTrades(benchmark::State &state) {
 }
 
 BENCHMARK(BM_MatchingEngineSendSomeTrades)
-    ->Args({5, 1, 1000})
-    ->Args({5, 6, 1000});
+    ->Args({5, 1, 1000});
+    // ->Args({5, 6, 1000});
 
 BENCHMARK_MAIN();
