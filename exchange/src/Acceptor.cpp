@@ -6,7 +6,6 @@ namespace exch {
 Acceptor::Acceptor(ExchangeConfig cfg, std::function<asio::awaitable<EnginePort>(asio::io_context&)> nextPort) 
     : nextPort{std::move(nextPort)}
     ,cfg{cfg}
-
 {}
 
 
