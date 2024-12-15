@@ -45,3 +45,4 @@ set_target_properties(testDriver PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SO
 set_target_properties(driver PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}")
 
 add_subdirectory(test)
+add_subdirectory(benchmark)

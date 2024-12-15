@@ -21,7 +21,6 @@ protected:
             context.run();
         }}
     {
-        std::cout << "MatchingEngineTest(): construct\n";
         asio::co_spawn(context, matchingEngine.run(), asio::detached);
     }
     ~MatchingEngineTest()

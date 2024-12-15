@@ -13,12 +13,10 @@ MatchingEngine::MatchingEngine(ExchangeConfig cfg, asio::io_context &ctx)
 {}
 
 asio::awaitable<void> MatchingEngine::run() {
-    fmt::println("MatchingEngine::run()");
     co_await handleClientMessages();
 }
 
 asio::awaitable<EnginePort> MatchingEngine::connect(asio::io_context &ctx) {
-    fmt::println("MatchingEngine::connect()");
     ClientId id = nextClientId++;
 
     clientChannels.insert({id,std::make_shared<server_send_channel_t>(ctx)});
@@ -29,11 +27,9 @@ asio::awaitable<EnginePort> MatchingEngine::connect(asio::io_context &ctx) {
 }
 
 asio::awaitable<void> MatchingEngine::handleClientMessages() {
-    fmt::println("MatchingEngine::handleClientMessages()");
     while(true)
     {
         std::pair<ClientId, order::ClientOutboundMessages> clientMsg = co_await incomingChannel->async_receive(asio::use_awaitable);
-        fmt::println("MatchingEngine(): received client message");
 
         auto handleOrder = [&](const order::Order &order) -> asio::awaitable<void> {
             ClientId cid = clientMsg.first;
@@ -47,7 +43,6 @@ asio::awaitable<void> MatchingEngine::handleClientMessages() {
             }, asio::use_awaitable);
 
             auto executions= book.place(order::AckedOrder{order, cid});
-            fmt::println("MatchingEngine(): placed order, received: {} executions", executions.size());
 
             for(auto &&exec : executions)
             {

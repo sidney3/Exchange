@@ -24,11 +24,17 @@ FetchContent_Declare(
   fmt
   URL https://github.com/fmtlib/fmt/archive/refs/heads/master.zip
 )
+FetchContent_Declare(
+  google_benchmark
+  GIT_REPOSITORY https://github.com/google/benchmark.git
+  GIT_TAG v1.8.3  # Use the latest stable release or specify your desired version
+)
 
 FetchContent_MakeAvailable(googletest)
 FetchContent_MakeAvailable(asio)
 FetchContent_MakeAvailable(nlohmann_json)
 FetchContent_MakeAvailable(fmt)
+FetchContent_MakeAvailable(google_benchmark)
 
 add_library(asio INTERFACE)
 target_compile_options(asio INTERFACE -DASIO_STANDALONE)
