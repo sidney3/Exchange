@@ -1,5 +1,6 @@
 #include "OrderTypes.hpp"
 #include "Types.hpp"
+#include "asio/any_io_executor.hpp"
 #include <EnginePort.hpp>
 #include <MatchingEngine.hpp>
 #include <asio.hpp>
@@ -16,12 +17,14 @@ static void BM_MatchingEngineSendSomeTrades(benchmark::State &state) {
         .listenPort = 1010
     };
     exch::MatchingEngine matchingEngine{cfg, context};
-    auto engineStrand = asio::make_strand(context);
-    asio::co_spawn(engineStrand, matchingEngine.run(), asio::detached);
-
     size_t numClients = state.range(0);
     size_t numWorkerThreads = state.range(1);
     size_t numTradesPerClient = state.range(2);
+
+    auto engineStrand = asio::make_strand(context);
+    asio::co_spawn(engineStrand, matchingEngine.run(), asio::detached);
+
+    auto clientStrand = asio::make_strand(context);
 
     std::vector<std::jthread> workerThreads;
     for(size_t i = 0; i < numWorkerThreads; ++i)
@@ -55,7 +58,6 @@ static void BM_MatchingEngineSendSomeTrades(benchmark::State &state) {
         };
     };
     auto clientThread = [&](exch::EnginePort &connection) {
-        auto clientStrand = asio::make_strand(context.get_executor());
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_real_distribution<exch::order::Price> priceDistribution(0.50, 100);
@@ -100,7 +102,8 @@ static void BM_MatchingEngineSendSomeTrades(benchmark::State &state) {
 }
 
 BENCHMARK(BM_MatchingEngineSendSomeTrades)
-    ->Args({5, 1, 1000});
-    // ->Args({5, 6, 1000});
+    ->Args({5, 1, 1000})
+    ->Args({5, 2, 1000})
+    ->Args({5, 5, 1000});
 
 BENCHMARK_MAIN();

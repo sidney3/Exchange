@@ -18,7 +18,7 @@ template<typename K, typename V>
 using FlatMap = std::unordered_map<K,V>;
 
 template<typename T>
-using channel = asio::experimental::channel<void(asio::error_code, T)>;
+using channel = asio::experimental::concurrent_channel<void(asio::error_code, T)>;
 
 
 }
