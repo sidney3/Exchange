@@ -16,6 +16,9 @@ ClientConnection::ClientConnection(EnginePort enginePort, asio::ip::tcp::socket 
 
 asio::awaitable<void> ClientConnection::run()
 {
+    // do login first, THEN start accepting normal messages
+    co_await handleLogon();
+
     co_await lib::when_all(
         handleClientMsg(),
         handleServerMsg()
@@ -56,7 +59,6 @@ struct FixEncoder
             }
 
             order.foreignOrderId = std::stoi(fixMessage[11]); 
-            order.clientId = std::stoi(fixMessage[49]);      
             order.symbol = fixMessage[55];       
             order.price = std::stod(fixMessage[44]);
             order.qty = std::stod(fixMessage[38]); 
@@ -83,6 +85,23 @@ struct FixEncoder
     }
 };
 
+asio::awaitable<void> ClientConnection::handleLogon() 
+{
+    std::optional<FIX::Message> maybeLogon = co_await FIX::readLogon(sock);
+
+    //@note in a real exchange we might do some sort of logon validation
+    // and note the client config. We don't do that here as our implementaiton
+    // isn't really about that
+
+    if(!maybeLogon.has_value())
+    {
+        fmt::println("Logon failed.");
+        co_return;
+    }
+
+    size_t logonSize = FIX::encodeLogon(sendBuffer);
+    co_await sock.async_send(asio::buffer(sendBuffer, logonSize), asio::use_awaitable);
+}
 asio::awaitable<void> ClientConnection::handleServerMsg()
 {
     while(true)
@@ -92,10 +111,12 @@ asio::awaitable<void> ClientConnection::handleServerMsg()
         size_t messageSize = std::visit(Overloaded{
             [&](order::Ack &ack)
             {
+                std::cout << "Sending ack " << ack << " to client " <<  enginePort.myId() << std::endl;
                 return FixEncoder::encodeAck(ack, sendBuffer);
             },
             [&](order::Fill &fill)
             {
+                std::cout << "Sending fill " << fill << " to client " <<  enginePort.myId() << std::endl;
                 return FixEncoder::encodeFill(fill, sendBuffer);
             }
         }, msg);
@@ -121,6 +142,8 @@ asio::awaitable<void> ClientConnection::handleClientMsg()
             fmt::println("Received valid FIX message, but not valid order");
             continue;
         }
+        maybeOrder->clientId = enginePort.myId();
+        std::cout << "Received client order: " << *maybeOrder << std::endl;
         co_await enginePort.send(std::move(*maybeOrder));
     }
 }

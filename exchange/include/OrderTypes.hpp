@@ -1,9 +1,11 @@
 #pragma once
+#include <fmt/format.h>
 #include <cstddef>
 #include <variant>
 #include <array>
 #include <Types.hpp>
 #include <string>
+#include <iostream>
 
 namespace exch::order {
 
@@ -29,10 +31,14 @@ enum class Type
 {
     Limit
 };
+std::ostream &operator<<(std::ostream &ostream, const Type& type);
+
 enum class Side
 {
     Buy, Sell
 };
+std::ostream &operator<<(std::ostream &ostream, const Side& side);
+
 
 
 struct Order
@@ -51,8 +57,9 @@ struct Order
 
     ClientId clientId;
 };
+std::ostream &operator<<(std::ostream &ostream, const Order &order);
 
-/* Lambrusco */
+
 struct AckedOrder : Order {
     order::Id exchangeId;
 };
@@ -62,6 +69,9 @@ struct Ack
     order::Id clientId;
     order::Id vendorId;
 };
+
+std::ostream &operator<<(std::ostream &ostream, const Ack &ack);
+
 struct Fill
 {
     order::Id id;
@@ -69,6 +79,8 @@ struct Fill
     //@note: partial fills are allowed
     Qty fillQty;
 };
+
+std::ostream &operator<<(std::ostream &ostream, const Fill &fill);
 
 /*
     An internal type (not sent back to a client)

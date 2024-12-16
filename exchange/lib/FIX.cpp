@@ -1,33 +1,35 @@
 #include "FIX.hpp"
+#include <iostream>
 
 namespace exch::FIX {
 
-Message parseFIXMessage(const std::string &fixMessage) {
-    Message msg;
-    std::istringstream stream(fixMessage);
-    std::string pair;
-    while (std::getline(stream, pair, '\x01')) { // Fields are delimited by SOH (\x01)
-        auto delimiterPos = pair.find('=');
-        if (delimiterPos != std::string::npos) {
-            fix_key_t key = std::stoul(pair.substr(0, delimiterPos));
-            std::string value = pair.substr(delimiterPos + 1);
-            msg[key] = value;
-        }
+asio::awaitable<std::pair<fix_key_t, std::string>> readOne(asio::ip::tcp::socket &sock) {
+    std::string keyStr, valStr;
+
+    std::array<char, 1> buf;
+    while(co_await asio::async_read(sock, asio::buffer(buf,1), asio::use_awaitable), buf[0] != '=') {
+        keyStr += buf[0];
     }
-    return msg;
+    while(co_await asio::async_read(sock, asio::buffer(buf,1), asio::use_awaitable), buf[0] != delim) {
+        valStr += buf[0];
+    }
+
+    co_return std::pair<fix_key_t, std::string>{std::stoul(keyStr), valStr};
 }
 
 // Reads a FIX message from the socket
 asio::awaitable<std::optional<Message>> readFIXMessage(asio::ip::tcp::socket &sock) {
-    std::vector<char> buffer(MaxMessageSize);
-    std::size_t bytesRead = co_await asio::async_read_until(sock, asio::dynamic_buffer(buffer), '\x01', asio::use_awaitable);
-
-    if (bytesRead > 0) {
-        std::string fixMessage(buffer.data(), bytesRead);
-        co_return parseFIXMessage(fixMessage);
+    Message msg;
+    while(true)
+    {
+        auto [key, val] = co_await readOne(sock);
+        msg[key] = std::move(val);
+        if(key == FixField::check)
+        {
+            break;
+        }
     }
-
-    co_return std::nullopt;
+    co_return msg;
 }
 
 asio::awaitable<std::optional<Message>> readLogon(asio::ip::tcp::socket &sock) {
@@ -66,6 +68,16 @@ size_t encodeFill(Message &fill, std::vector<char> &out) {
     fill[150] = "2"; // 150=2 indicates a Fill
     fill[39] = "2";  // 39=2 indicates Order Status as Filled
     return encodeMessage(fill, out);
+}
+
+size_t encodeLogon(std::vector<char> &out) {
+    const std::string mockLogon = "8=FIX.4.4|9=112|35=A|34=1|49=EXCHANGE|56=CLIENT|98=0|108=30|141=Y|553=USERNAME|554=PASSWORD|10=128|";
+    if(out.size() < mockLogon.size())
+    {
+        return -1;
+    }
+    std::copy(mockLogon.begin(), mockLogon.end(), out.begin());
+    return mockLogon.size();
 }
 
 }

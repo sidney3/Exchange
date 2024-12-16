@@ -1,0 +1,8 @@
+Logon:
+8=FIX.4.2|35=A|34=1|49=SenderCompID|56=TargetCompID|98=0|108=30|10=XXX|
+
+BUY 5 AAPL @ 9$ with ClOrdID = 0:
+8=FIX.4.2|35=D|11=0|55=AAPL|54=1|38=5|44=9|40=2|59=0|10=XXX|
+
+SELL 9 AAPL @ 7$ with ClOrdID = 1
+8=FIX.4.2|35=D|11=1|55=AAPL|54=2|38=9|44=7|40=2|59=0|10=XXX|

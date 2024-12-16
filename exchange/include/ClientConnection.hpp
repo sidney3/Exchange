@@ -19,6 +19,7 @@ private:
     asio::ip::tcp::socket sock;
     std::vector<char> sendBuffer;
 
+    asio::awaitable<void> handleLogon();
     asio::awaitable<void> handleServerMsg();
     asio::awaitable<void> handleClientMsg();
 public:
