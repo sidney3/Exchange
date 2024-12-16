@@ -5,7 +5,6 @@
 #include <asio.hpp>
 #include <ExchangeConfig.hpp>
 #include <MatchingEngine.hpp>
-#include <Acceptor.hpp>
 
 namespace exch {
 
@@ -19,11 +18,16 @@ private:
     /*
         Use pointers so that we can be moveable 
     */
+    ExchangeConfig cfg;
     std::shared_ptr<MatchingEngine> matchingEngine;
-    std::shared_ptr<Acceptor> acceptor;
+    asio::ip::tcp::acceptor acceptor;
     std::vector<std::shared_ptr<ClientConnection>> clients;
-
     std::shared_ptr<asio::io_context> context;
+public:
+    Exchange(Exchange&&) = default;
+    Exchange(const Exchange&) = delete;
+    Exchange& operator=(Exchange&&) = default;
+    Exchange& operator=(const Exchange&) = delete;
 };
 
 }

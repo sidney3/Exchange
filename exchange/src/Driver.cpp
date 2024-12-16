@@ -13,6 +13,7 @@ int main(int argc, char **argv)
     }
 
     std::shared_ptr<asio::io_context> context = std::make_shared<asio::io_context>();
+    auto workGuard = asio::make_work_guard(context->get_executor());
 
     std::jthread engineWorker{[&](std::stop_token tok){
         context->run();
@@ -28,5 +29,25 @@ int main(int argc, char **argv)
     asio::co_spawn(context->get_executor(), exchange.acceptClients(context->get_executor()), asio::detached);
     asio::co_spawn(context->get_executor(), exchange.runMatchingEngine(), asio::detached);
 
-    while(1);
+    constexpr char stopCmd = 'S';
+    std::string userInput;
+    while(true)
+    {
+        std::cout << ">";
+        std::getline(std::cin, userInput);
+        if(userInput.empty())
+        {
+            continue;
+        }
+        switch(userInput.front())
+        {
+        case stopCmd: {
+            context->stop();
+            return 0;
+        }
+        default: {
+            break;
+        }
+        }
+    }
 }

@@ -4,6 +4,7 @@
 #include <when_all.hpp>
 #include <FIX.hpp>
 #include <fmt/format.h>
+#include <time.h>
 
 namespace exch {
 
@@ -15,6 +16,9 @@ ClientConnection::ClientConnection(EnginePort enginePort, asio::ip::tcp::socket 
 
 asio::awaitable<void> ClientConnection::run()
 {
+    // do login first, THEN start accepting normal messages
+    co_await handleLogon();
+
     co_await lib::when_all(
         handleClientMsg(),
         handleServerMsg()
@@ -24,16 +28,80 @@ asio::awaitable<void> ClientConnection::run()
 struct FixEncoder
 {
     static size_t encodeAck(order::Ack &ack, std::vector<char> &buf) {
-        return -1;
+        FIX::Message message;
+        message[35] = "8"; // MsgType = Execution Report
+        message[150] = "0"; // ExecType = New
+        message[39] = "0"; // OrdStatus = New
+        message[11] = ack.clientId; // Client Order ID
+        message[37] = ack.vendorId; // Vendor Order ID
+
+        return FIX::encodeAck(message, buf);
     }
+
     static size_t encodeFill(order::Fill &fill, std::vector<char> &buf) {
-        return -1;
+        FIX::Message message;
+        message[35] = "8"; // MsgType = Execution Report
+        message[150] = "2"; // ExecType = Fill
+        message[39] = "2"; // OrdStatus = Filled
+        message[11] = fill.id; // Client Order ID
+        message[31] = std::to_string(fill.fillPrice); // LastPx (fill price)
+        message[32] = std::to_string(fill.fillQty);   // LastQty (fill quantity)
+
+        return FIX::encodeFill(message, buf);
     }
-    static std::optional<order::Order> decodeOrder(FIX::Message &order) {
-        return std::nullopt;
+
+    static std::optional<order::Order> decodeOrder(FIX::Message &fixMessage) {
+        try {
+            order::Order order;
+
+            if (fixMessage[35] != "D") { 
+                return std::nullopt;
+            }
+
+            order.foreignOrderId = std::stoi(fixMessage[11]); 
+            order.symbol = fixMessage[55];       
+            order.price = std::stod(fixMessage[44]);
+            order.qty = std::stod(fixMessage[38]); 
+
+            std::string side = fixMessage[54]; // Side
+            if (side == "1") {
+                order.side = order::Side::Buy;
+            } else if (side == "2") {
+                order.side = order::Side::Sell;
+            } else {
+                return std::nullopt; // Invalid side
+            }
+
+            std::string type = fixMessage[40]; // OrdType
+            
+            // Only support limit orders!
+            order.type = order::Type::Limit;
+
+            order.sendTime = std::chrono::steady_clock::now();
+            return order;
+        } catch (...) {
+            return std::nullopt; // Handle parsing errors
+        }
     }
 };
 
+asio::awaitable<void> ClientConnection::handleLogon() 
+{
+    std::optional<FIX::Message> maybeLogon = co_await FIX::readLogon(sock);
+
+    //@note in a real exchange we might do some sort of logon validation
+    // and note the client config. We don't do that here as our implementaiton
+    // isn't really about that
+
+    if(!maybeLogon.has_value())
+    {
+        fmt::println("Logon failed.");
+        co_return;
+    }
+
+    size_t logonSize = FIX::encodeLogon(sendBuffer);
+    co_await sock.async_send(asio::buffer(sendBuffer, logonSize), asio::use_awaitable);
+}
 asio::awaitable<void> ClientConnection::handleServerMsg()
 {
     while(true)
@@ -43,10 +111,12 @@ asio::awaitable<void> ClientConnection::handleServerMsg()
         size_t messageSize = std::visit(Overloaded{
             [&](order::Ack &ack)
             {
+                std::cout << "Sending ack " << ack << " to client " <<  enginePort.myId() << std::endl;
                 return FixEncoder::encodeAck(ack, sendBuffer);
             },
             [&](order::Fill &fill)
             {
+                std::cout << "Sending fill " << fill << " to client " <<  enginePort.myId() << std::endl;
                 return FixEncoder::encodeFill(fill, sendBuffer);
             }
         }, msg);
@@ -72,6 +142,8 @@ asio::awaitable<void> ClientConnection::handleClientMsg()
             fmt::println("Received valid FIX message, but not valid order");
             continue;
         }
+        maybeOrder->clientId = enginePort.myId();
+        std::cout << "Received client order: " << *maybeOrder << std::endl;
         co_await enginePort.send(std::move(*maybeOrder));
     }
 }
