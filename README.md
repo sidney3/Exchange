@@ -2,6 +2,10 @@
 
 My final project for Networks: a mock exchange
 
+## Demo:
+
+[Google Drive Link](https://drive.google.com/file/d/1nBt_9rTe08IfxGvQHjUQPjH05mFCVyRF/view?usp=sharing)
+
 ## Architecture Flow
 
 This is a coroutine based system, where each module is defined in terms of a class that holds its state, and a `asio::awaitable<void> run()` member function of that class. These can be composed using `template<typename ... AWAITABLES> when_all(AWAITABLES&&...)`.
@@ -11,7 +15,7 @@ An example of this style of module, and an example driver for it, is given in `e
 
 ## Objectives
 
-1. Try out building an asyncronous system. I felt I wrote a very inefficient thread based TCP system that spent a lot of its time spinning, and I wanted to try out building a system around coroutines
+1. Try out building an asyncronous system. I felt I wrote a very inefficient thread based TCP system that spent a lot of its time spinning, and I wanted to try out building a system around coroutines. In a lot of ways, this project is everything that I wish I would have known to do in the prior projects (and I am very happy with the quality of the code in the core server logic).
 
 2. Make something performant (or at least investigate performance). I put special emphasis on making something that was sufficiently modular to write benchmarks for it. We spend most of the report discussing our timing related findings.
 
@@ -19,7 +23,7 @@ An example of this style of module, and an example driver for it, is given in `e
 
 As we are more interested in exploring building something efficient, we eschew:
 
-1. Cancels
+1. Cancels (i.e. you can only send orders)
 2. Network card performance. At a high level, we can the flow of data in our program is as follows:
 
 Incoming Data (over the wire) in the FIX format  --->
@@ -31,6 +35,22 @@ Incoming Data (over the wire) in the FIX format  --->
 We propose implementations for that first link, but don't test these thoroughly and instead focus our testing + benchmarking time on the communication between `ClientConnection` and `MatchingEngine`.
 
 There is a lot of depth to the first step (how do we do our encodings / decodings in a performant way), but I wasn't able to find the time to focus on this link of the graph. So we spend most of our time thinking about the link between the client connection and the matching engine. The `exchange/lib/Fix.hpp` are the main areas where I would have liked to put more time into thinking about performance, but this is a challenge for another day.
+
+3. Market data broadcasting: I didn't have time to get to this.
+
+## Design Overview
+
+The core data structure behind this all is the order book: `OrderBook.hpp`, that receives trades and spits out matches. The rest of the system can be thought of as layers around this expanding outwards:
+
+1. The `MatchingEngine` in `MatchingEngine.hpp` sequences all of the clients trades: clients may be running concurrently, but at some point we need to establish some ordering, and so this is a single point in space where the trades get fed to the `OrderBook`, and trades handed back to clients. There is only ever one of these running and it is single threaded.
+
+2. The `ClientConnection` in `ClientConnection.hpp` is a representative for each client. When the client sends or receives a FIX message (that is, the exchange wants to send the client something), we pass our internal structs into this module, and they get fed out / received over the wire. There can be multiple of these running, and it is stateless (as the "state" of the client is implicitly held in the order book)
+
+3. `Fix.hpp` is our (rudamentary) `FIX` parsing package for converting raw bytes into `FIX` messages.
+
+4. `Exchange.hpp` is a nice wrapper for all of our various coroutines (that bundles them into one class)
+
+Note that none of the above modules actually own any threads! Instead, we use the philosophy of "you provide the work," that I found super helpful to think about. 
 
 ## Performance Writeup
 
@@ -128,7 +148,7 @@ And interestingly, we find very little performance gain from dry-firing our exec
 
 ### Use better data structures
 
-Not a very surprising part of our benchmarks, but we evaluate the performance advantages that we gain from switching to `StackVector` (vector that starts out stack allocated past a threshold) and `FlatMap` (open addressed hash map) in place of `std::vector` and `std::unordered_map`. We use the sick (abseil)[https://abseil.io/] library 
+Not a very surprising part of our benchmarks, but we evaluate the performance advantages that we gain from switching to `StackVector` (vector that starts out stack allocated past a threshold) and `FlatMap` (open addressed hash map) in place of `std::vector` and `std::unordered_map`. We use the sick [abseil](https://abseil.io/) library 
 
 ```
 ------------------------------------------------------------------------------------
@@ -151,3 +171,16 @@ BM_MatchingEngineSendSomeTrades/25/1/1000  467132430 ns       247230 ns         
 ```
 
 Most surprising in the above is how little benefit we get from the use of stack vectors (note that our `OrderBook` returns one of these for every execution). I would imagine that not allocating would give us a lot of performance, but surprisingly it did not, so we remain with `std::vector`.
+
+## Conclusions / Future Work
+
+### Future work
+
+Where the I would have loved to spend more time is in the efficient processing of FIX messages (that is, the byte by byte processing of the incoming FIX messages). You can spend a lot of time on doing this efficiently (and we do not do this, using a map from keys to strings).
+
+Additionally, we benchmark only the time to process a trade once it has been received by the matching engine. Equally (if not more) interesing is the time to actually process bytes over the wire into our internal structs, as well as the total round trip time (bytes received to bytes sent), and so there are other layers of our system that we can test. 
+
+
+### Overall Conclusions
+
+I'm extremely happy with the quality of the code produced in this project. Of course, this is always more to do, but I feel the current product is simple and understandable. As mentioned in the video, this is a nice way to end the course because these are a lot of the things that I wished I was able to do in TCP. I felt I overcomplicated a lot of things through the projects in this course, and so to wrap it up with a simple and (from what I can tell) performant module is quite pleasing.

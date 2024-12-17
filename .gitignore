@@ -24,6 +24,7 @@ CMakeFiles
 /vrouter
 /testDriver
 /driver
+/ExchangeBenchmark
 
 # CMake build directories 
 **/build
